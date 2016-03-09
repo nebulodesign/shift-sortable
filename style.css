@@ -1,0 +1,8 @@
+.sortable { list-style-type: none; margin: 0; padding: 0; }
+.sortable:after { content:""; display:table; clear:both; }
+.sortable:before { content:""; display:table; }
+.sortable li { margin: 0 10px 10px 0; padding: 1px; float: left; width: 100px; height: 130px; text-align: center; cursor: move; }
+.sortable li .no-image { background: #ffffff; height: 100px; line-height: 100px; color: #d1d1d1; }
+.sortable li .wp-caption { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 5px 0 0 0 }
+.section ~ .section {margin-top: 50px;}
+.ui-state-highlight {border: 1px dashed #999; height: 130px;};
