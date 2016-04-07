@@ -5,51 +5,18 @@ jQuery(function($) {
 	});
 	$( '.sortable' ).disableSelection();
 
-	$( 'select#categories option[value]:selected' ).each(function(){
 
-		var term_id = $(this).val();
-		var taxonomy = $(this).parent( 'optgroup' ).data( 'taxonomy' );
-		var post_type = $(this).parent( 'optgroup' ).data( 'post-type' );
 
-		$.ajax({
-			url: admin_ajax.url,
-
-			data: ({ action : 'select_sortable_terms', term_id : term_id, taxonomy : taxonomy, post_type : post_type }),
-
-			type: 'POST',
-
-			beforeSend: function() {
-
-			},
-
-			success: function(response) {
-
-				$( '#posts-list' ).html( response );
-				$( '.publishing-action' ).show();
-			},
-
-			error: function() {
-
-			},
-
-			complete: function() {
-
-			}
-
-		}); // end ajax call
-
-	});
-
-	$( 'select#categories' ).on( 'change', function(){
+	$( 'select#terms' ).on( 'change', function(){
 
 		var term_id = $(this).val();
 		var taxonomy = $(this).find( ':selected' ).parent( 'optgroup' ).data( 'taxonomy' );
-		var post_type = $(this).find( ':selected' ).parent( 'optgroup' ).data( 'post-type' );
+		var post_type = $(this).find( ':selected' ).parents( 'select' ).data( 'post-type' );
 
 		$.ajax({
 			url: admin_ajax.url,
 
-			data: ({ action : 'select_sortable_terms', term_id : term_id, taxonomy : taxonomy, post_type : post_type }),
+			data: ({ action : 'sortable/select_posts', term_id : term_id, taxonomy : taxonomy, post_type : post_type }),
 
 			type: 'POST',
 
@@ -60,7 +27,7 @@ jQuery(function($) {
 			success: function(response) {
 
 				$( '#posts-list' ).html( response );
-				$( '.publishing-action' ).show();
+				$( '#posts-list' ).next( '.publishing-action' ).show();
 			},
 
 			error: function() {
@@ -75,17 +42,54 @@ jQuery(function($) {
 
 	});
 
-	$( 'input.button[name="save_category_posts_order"]' ).on( 'click', function(e){
+	$( 'select#terms option[value]:selected' ).each(function(){
+
+		var term_id = $(this).val();
+		var taxonomy = $(this).parent( 'optgroup' ).data( 'taxonomy' );
+		var post_type = $(this).parents( 'select' ).data( 'post-type' );
+
+		$.ajax({
+			url: admin_ajax.url,
+
+			data: ({ action : 'sortable/select_posts', term_id : term_id, taxonomy : taxonomy, post_type : post_type }),
+
+			type: 'POST',
+
+			beforeSend: function() {
+
+			},
+
+			success: function(response) {
+
+				$( '#posts-list' ).html( response );
+				$( '#posts-list' ).next( '.publishing-action' ).show();
+			},
+
+			error: function() {
+
+			},
+
+			complete: function() {
+
+			}
+
+		}); // end ajax call
+
+	});
+
+	$( 'input.button[name="save_posts_order"]' ).on( 'click', function(e){
 
 		var post_ids = new Array();
 		$.each( $( '[data-post_id]' ), function(){
 			post_ids.push( $(this).data( 'post_id' ) );
 		});
 
+		var term_id = $( 'form#save-posts-order select#terms, form#save-posts-order input#terms' ).val();
+
 		$.ajax({
 			url: admin_ajax.url,
 
-			data: ({ action : 'update_sortable_posts', post_ids : post_ids }),
+			data: ({ action : 'sortable/save_posts_order', post_ids : post_ids, term_id : term_id }),
 
 			type: 'POST',
 
@@ -95,7 +99,7 @@ jQuery(function($) {
 
 			success: function(response) {
 
-				$( 'form#update-category' ).submit();
+				$( 'form#save-posts-order' ).submit();
 			},
 
 			error: function() {
@@ -108,11 +112,77 @@ jQuery(function($) {
 
 		}); // end ajax call
 
+	});
+
+	$( 'select#taxonomies' ).on( 'change', function(){
+
+		var taxonomy = $(this).val();
+
+		$.ajax({
+			url: admin_ajax.url,
+
+			data: ({ action : 'sortable/select_terms', taxonomy : taxonomy }),
+
+			type: 'POST',
+
+			beforeSend: function() {
+
+			},
+
+			success: function(response) {
+
+				$( '#terms-list' ).html( response );
+				$( '#terms-list' ).next( '.publishing-action' ).show();
+			},
+
+			error: function() {
+
+			},
+
+			complete: function() {
+
+			}
+
+		}); // end ajax call
 
 	});
 
 
-	$( 'input.button[name="save_categories_order"]' ).on( 'click', function(e){
+	$( 'select#taxonomies option[value]:selected' ).each(function(){
+
+		var taxonomy = $(this).val();
+
+		$.ajax({
+			url: admin_ajax.url,
+
+			data: ({ action : 'sortable/select_terms', taxonomy : taxonomy }),
+
+			type: 'POST',
+
+			beforeSend: function() {
+
+			},
+
+			success: function(response) {
+
+				$( '#terms-list' ).html( response );
+				$( '#terms-list' ).next( '.publishing-action' ).show();
+			},
+
+			error: function() {
+
+			},
+
+			complete: function() {
+
+			}
+
+		}); // end ajax call
+
+	});
+
+
+	$( 'input.button[name="save_terms_order"]' ).on( 'click', function(e){
 
 		var term_ids = new Array();
 		$.each( $( '[data-term_id]' ), function(){
@@ -122,7 +192,7 @@ jQuery(function($) {
 		$.ajax({
 			url: admin_ajax.url,
 
-			data: ({ action : 'update_sortable_terms', term_ids : term_ids }),
+			data: ({ action : 'sortable/save_terms_order', term_ids : term_ids }),
 
 			type: 'POST',
 
@@ -132,11 +202,11 @@ jQuery(function($) {
 
 			success: function(response) {
 
-				$( 'form#update-categories' ).submit();
+				$( 'form#save-terms-order' ).submit();
 			},
 
 			error: function() {
-				alert('error');
+
 			},
 
 			complete: function() {

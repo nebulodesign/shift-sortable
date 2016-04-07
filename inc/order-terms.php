@@ -1,21 +1,40 @@
-<p>Drag and drop the thumbnails to order them.</p>
-<form action="" method="post" id="update-categories">
-	<input type="hidden" name="save_categories_order" value="save_categories_order" />
+<?php if( count( $taxonomies ) > 1 ): ?>
+<p>Choose a term from the dropdown list and then drag and drop the thumbnails to order them.</p>	
+<form action="" method="post" id="save-terms-order">
+	<p>
+		<select name="taxonomy" id="taxonomies">
+			<option <?php selected( !isset( $_POST['taxonomy'] ) ); ?> disabled>&mdash; Choose a set of terms to re-order &mdash;</option>
+			<?php foreach( $taxonomies as $taxonomy ): ?>
+			<option <?php if( isset( $_POST['taxonomy'] ) ) selected( $_POST['taxonomy'], $taxonomy->name ); ?> value="<?php echo $taxonomy->name; ?>">
+				<?php echo $taxonomy->label; ?>
+			</option>
+			<?php endforeach; ?>
+		</select>
+	</p>
 </form>
-<ul class="sortable">
-<?php foreach( $terms as $term ) : ?>
-	<?php $term_thumbnail_id = apply_filters( 'sortable/' . $taxonomy->name . '_term_thumbnail_id', null, $term->term_id ); ?>
-	<li class="ui-state-default" data-term_id="<?php echo $term->term_id; ?>">
-		<?php if( $term_thumbnail_id && is_int( $term_thumbnail_id ) && get_post_type( $term_thumbnail_id ) === 'attachment' ) : ?>
-		<?php echo wp_get_attachment_image( $term_thumbnail_id, array(100,100) ); ?>
-		<?php else: ?>
-		<div class="no-image"><?php echo $term->name; ?></div>
-		<?php endif; ?>
-		<p class="wp-caption"><?php echo $term->name; ?></p>
-	</li>
-<?php endforeach; ?>
+<ul class="sortable" id="terms-list">
+</ul>
+<p class="publishing-action" style="display: none">
+	<input type="submit" name="save_terms_order" class="button button-primary" value="Save Categories Order" />
+</p>
+
+
+<?php else: ?>
+<?php $taxonomy = $taxonomies[0]; ?>
+<p>Drag and drop the thumbnails to order them.</p>
+<form action="" method="post" id="save-terms-order">
+	<input type="hidden" name="taxonomy" id="taxonomies" value="<?php echo $taxonomy->name; ?>" />
+</form>
+<ul class="sortable" id="terms-list">
+	<?php	foreach( get_terms( $taxonomy->name, array(
+		'hide_empty' => false,
+		'orderby' => 'term_order',
+	) ) as $term ) include 'term-li.php'; ?>
+
 </ul>
 <p class="publishing-action">
-	<input type="submit" name="save_categories_order" class="button button-primary" value="Save <?php echo $taxonomy->label; ?>">
+	<input type="submit" name="save_terms_order" class="button button-primary" value="Save <?php echo $taxonomy->label; ?> Order" />
 </p>
+
+<?php endif; ?>
 <hr />
