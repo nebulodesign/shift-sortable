@@ -3,7 +3,7 @@
 Plugin Name:	SHIFT - Sortable
 Plugin URI:		https://github.com/nebulodesign/shift-sortable/
 Description:	Allows taxonomy terms and posts to be given a custom order
-Version:			0.2
+Version:			1.0
 Author:				Nebulo Design
 Author URI:		http://nebulodesign.com
 License:			GPL
@@ -307,3 +307,31 @@ add_filter( 'terms_clauses', function( $clauses, $taxonomy, $args ){
 	return $clauses;
 
 }, 10, 3 );
+
+add_action( 'pre_get_posts', function( $query ){
+	$query->set( 'orderby', 'term_order' );
+}, 10, 1 );
+
+// add ability to use 'term_order' (for example) as 'orderby' arguements for get_posts()
+add_action( 'pre_get_posts', function( $query ){
+
+	if( isset( $query->query_vars['orderby'] ) && $query->query_vars['orderby'] === 'term_order' && is_tax() && is_a( get_queried_object(), 'WP_Term' ) ) {
+		$query->set( 'suppress_filters', false );
+
+		add_filter( 'posts_clauses', function( $clauses ) use( $query ){
+
+			if( isset( $query->query_vars['orderby'] ) && $query->query_vars['orderby'] === 'term_order' && is_tax() && is_a( get_queried_object(), 'WP_Term' ) ) {
+				$term_id = get_queried_object()->term_id;
+
+				global $wpdb;
+				$clauses['join'] .= " INNER JOIN {$wpdb->postmeta} ON ({$wpdb->posts}.ID = {$wpdb->postmeta}.post_id)";
+				$clauses['where'] .= " AND {$wpdb->postmeta}.meta_key = 'term_{$term_id}_order'";
+				$clauses['orderby'] = "{$wpdb->postmeta}.meta_value ASC";
+			}
+
+			return $clauses;
+		});
+	}
+
+}, 9999 );
+
