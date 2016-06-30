@@ -3,7 +3,7 @@
 Plugin Name:	SHIFT - Sortable
 Plugin URI:		https://github.com/nebulodesign/shift-sortable/
 Description:	Allows taxonomy terms and posts to be given a custom order
-Version:			1.0
+Version:			1.0.1
 Author:				Nebulo Design
 Author URI:		http://nebulodesign.com
 License:			GPL
@@ -11,18 +11,13 @@ License:			GPL
 
 /**
  * Initiate custom plugin class - fetches updates from our own public GitHub repository.
- *
- * @param  string $pluginFile always use __FILE__
- * @param  string $gitHubUsername use 'nebulodesign'
- * @param  string $gitHubProjectName use name of plugin's repository
- * @param  string $accessToken optional
- * @return null
  */
-if( is_admin() ) new Shift_Plugin_Updater( __FILE__, 'nebulodesign', 'shift-sortable' );
+if( is_admin() && class_exists( 'Shift_Plugin_Updater' ) ) new Shift_Plugin_Updater( __FILE__ );
 
 
 // Add sortable to post type
 add_action( 'registered_post_type', function( $post_type, $args ){
+
 	if( isset( $args->sortable ) && $args->sortable == true ) {
 
 		add_action( 'admin_menu', function() use( $post_type, $args ){
@@ -47,7 +42,7 @@ add_action( 'registered_post_type', function( $post_type, $args ){
 				}
 			) );
 
-			do_action( 'sortable/add_posts_section', $post_type, $args, $taxonomies );					
+			do_action( 'sortable/add_posts_section', $post_type, $args, $taxonomies );
 
 			if( !empty( $sortable_taxonomies ) ) {
 
@@ -147,7 +142,7 @@ add_action( 'sortable/add_submenu_page', function( $post_type, $args ){
 		add_submenu_page(
 			$parent_slug,
 			'Order '.$args->label,
-			'Order '.$args->label,
+			'Order '.$args->label . '<span class="dashicons dashicons-sort" style="float: right; font-size: 1em"></span>',
 			'edit_pages',
 			$menu_slug,
 			function() use( $post_type, $args ){
@@ -220,8 +215,7 @@ add_action( 'wp_ajax_sortable/select_posts', function(){ // show posts for selec
 					'terms' => $term_id
 				)
 			);
-			$get_posts_args['meta_key'] = 'term_' . $term_id . '_order';
-			$get_posts_args['orderby'] = 'meta_value_num';
+			$get_posts_args['orderby'] = 'term_' . $term_id . '_order';
 		}
 		elseif( $term_id === 'all' ) {
 			$get_posts_args['orderby'] = 'menu_order';
@@ -237,7 +231,7 @@ add_action( 'wp_ajax_sortable/select_posts', function(){ // show posts for selec
 
 add_action( 'wp_ajax_sortable/save_posts_order', function(){ // update order of posts
 
-	$post_ids = $_POST['post_ids'];
+	$post_ids = array_map( 'intval', $_POST['post_ids'] );
 	$term_id = $_POST['term_id'];
 
 	$i = 1;
@@ -280,7 +274,6 @@ add_action( 'wp_ajax_sortable/save_terms_order', function(){ // update order of 
 	exit;
 });
 
-
 // add ability to use 'term_order' (for example) as an 'orderby' arguement for get_terms()
 add_filter( 'terms_clauses', function( $clauses, $taxonomy, $args ){
 
@@ -291,47 +284,124 @@ add_filter( 'terms_clauses', function( $clauses, $taxonomy, $args ){
 
 	if( $taxonomy_is_sortable === true && $args['orderby'] === 'term_order' ) {
 
-		if( empty( $args['meta_query'] ) || empty( array_filter( $args['meta_query'], function( $mq ){ return ( is_array( $mq ) && in_array( 'term_order', $mq ) ); }) ) ) {
-
-			$mquery = new WP_Meta_Query( array( array( 'key' => 'term_order' ) ) );
-		  $mq_sql = $mquery->get_sql( 'term', 't', 'term_id' );
-
-			$clauses['where'] .= $mq_sql['where'];
-			$clauses['join'] = $mq_sql['join'] . $clauses['join'];
-		}
-
 		global $wpdb;
-		$clauses['orderby'] = "ORDER BY {$wpdb->termmeta}.meta_value";
+
+		$mquery = new WP_Meta_Query( array(
+			'relation' => 'OR',
+			array( 'key' => 'term_order', 'compare' => 'EXISTS' ),
+			array( 'key' => 'term_order', 'compare' => 'NOT EXISTS' ),
+		) );
+
+		$mq_sql = array_map( function( $clause ){
+
+			global $wpdb;
+
+			return str_replace(
+
+				array(
+					"LEFT JOIN {$wpdb->termmeta} ON",
+					"{$wpdb->termmeta}.term_id",
+					"{$wpdb->termmeta}.meta_key",
+					"LEFT JOIN {$wpdb->termmeta} AS mt1 ON",
+					"mt1.term_id",
+					"mt1.meta_key",
+				),
+
+				array(
+					"LEFT JOIN {$wpdb->termmeta} AS srtbl1 ON",
+					"srtbl1.term_id",
+					"srtbl1.meta_key",
+					"LEFT JOIN {$wpdb->termmeta} AS srtbl2 ON",
+					"srtbl2.term_id",
+					"srtbl2.meta_key",
+				),
+
+				$clause
+
+			);
+
+		}, $mquery->get_sql( 'term', 't', 'term_id' ) );
+
+		$clauses['join'] .= $mq_sql['join'];
+
+		$clauses['where'] .= $mq_sql['where'];
+
+		$clauses['fields'] .= ", IFNULL( srtbl2.meta_value, ( SELECT MAX(meta_value) FROM {$wpdb->termmeta} WHERE meta_key='term_order' ) + 1 ) AS term_order";
+
+		$clauses['orderby'] = str_replace( 'ORDER BY', 'ORDER BY term_order ASC, ', $clauses['orderby'] );
+
 	}
 
 	return $clauses;
 
 }, 10, 3 );
 
-add_action( 'pre_get_posts', function( $query ){
-	$query->set( 'orderby', 'term_order' );
-}, 10, 1 );
 
-// add ability to use 'term_order' (for example) as 'orderby' arguements for get_posts()
+// add ability to use 'term_posts_order' and 'term_$i_order' (for example) as 'orderby' arguements for get_posts()
 add_action( 'pre_get_posts', function( $query ){
 
-	if( isset( $query->query_vars['orderby'] ) && $query->query_vars['orderby'] === 'term_order' && is_tax() && is_a( get_queried_object(), 'WP_Term' ) ) {
+	if( isset( $query->query['orderby'] ) && $query->query['orderby'] === 'term_posts_order' && is_tax() && is_a( get_queried_object(), 'WP_Term' ) )
+
+		$query->set( 'orderby', 'term_' . get_queried_object()->term_id . '_order' );
+
+	if( isset( $query->query_vars['orderby'] ) && preg_match( '/^term_(\d+)_order$/', $query->query_vars['orderby'] ) ) {
+
 		$query->set( 'suppress_filters', false );
 
-		add_filter( 'posts_clauses', function( $clauses ) use( $query ){
+		$orderby = $query->query_vars['orderby'];
 
-			if( isset( $query->query_vars['orderby'] ) && $query->query_vars['orderby'] === 'term_order' && is_tax() && is_a( get_queried_object(), 'WP_Term' ) ) {
-				$term_id = get_queried_object()->term_id;
+		add_filter( 'posts_clauses', function( $clauses ) use( $orderby ){
+
+			global $wpdb;
+
+			$mquery = new WP_Meta_Query( array(
+				'relation' => 'OR',
+				array( 'key' => $orderby, 'compare' => 'EXISTS' ),
+				array( 'key' => $orderby, 'compare' => 'NOT EXISTS' ),
+			) );
+
+			$mq_sql = array_map( function( $clause ){
 
 				global $wpdb;
-				$clauses['join'] .= " INNER JOIN {$wpdb->postmeta} ON ({$wpdb->posts}.ID = {$wpdb->postmeta}.post_id)";
-				$clauses['where'] .= " AND {$wpdb->postmeta}.meta_key = 'term_{$term_id}_order'";
-				$clauses['orderby'] = "{$wpdb->postmeta}.meta_value ASC";
-			}
+
+				return str_replace(
+
+					array(
+						"LEFT JOIN {$wpdb->postmeta} ON",
+						"{$wpdb->postmeta}.post_id",
+						"{$wpdb->postmeta}.meta_key",
+						"LEFT JOIN {$wpdb->postmeta} AS mt1 ON",
+						"mt1.post_id",
+						"mt1.meta_key",
+					),
+
+					array(
+						"LEFT JOIN {$wpdb->postmeta} AS srtbl1 ON",
+						"srtbl1.post_id",
+						"srtbl1.meta_key",
+						"LEFT JOIN {$wpdb->postmeta} AS srtbl2 ON",
+						"srtbl2.post_id",
+						"srtbl2.meta_key",
+					),
+
+					$clause
+
+				);
+
+			}, $mquery->get_sql( 'post', $wpdb->prefix.'posts', 'ID' ) );
+
+			$clauses['join'] .= $mq_sql['join'];
+
+			$clauses['where'] .= $mq_sql['where'];
+
+			$clauses['fields'] .= ", IFNULL( srtbl2.meta_value, ( SELECT MAX(meta_value) FROM {$wpdb->postmeta} WHERE meta_key='{$orderby}' ) + 1 ) AS {$orderby}";
+
+			$clauses['orderby'] = $orderby . ' ASC, ' . $clauses['orderby'];
 
 			return $clauses;
+
 		});
+
 	}
 
 }, 9999 );
-
