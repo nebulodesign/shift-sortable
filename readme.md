@@ -75,7 +75,7 @@ $terms_array = get_terms( $taxonomy, $args );
 
 # ROADMAP
 
-[] Delete post term order (meta) data
-[] Cater for hierarchical category/tag structures
-[] Cater for sorting child posts
-[*] DOCUMENTATION
+- [] Delete post term order (meta) data
+- [] Cater for hierarchical category/tag structures
+- [] Cater for sorting child posts
+- [*] DOCUMENTATION
