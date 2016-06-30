@@ -3,7 +3,7 @@
 Plugin Name:	SHIFT - Sortable
 Plugin URI:		https://github.com/nebulodesign/shift-sortable/
 Description:	Allows taxonomy terms and posts to be given a custom order
-Version:			1.0.1
+Version:			1.1.1
 Author:				Nebulo Design
 Author URI:		http://nebulodesign.com
 License:			GPL
