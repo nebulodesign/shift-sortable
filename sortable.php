@@ -3,7 +3,7 @@
 Plugin Name:	SHIFT - Sortable
 Plugin URI:		https://github.com/nebulodesign/shift-sortable/
 Description:	Allows taxonomy terms and posts to be given a custom order
-Version:			1.1.1
+Version:			1.1.2
 Author:				Nebulo Design
 Author URI:		http://nebulodesign.com
 License:			GPL
@@ -138,7 +138,7 @@ add_action( 'sortable/add_submenu_page', function( $post_type, $args ){
 	$parent_slug = add_query_arg( 'post_type', $post_type, 'edit.php' );
 	$menu_slug = 'order-' . $post_type;
 
-	if( empty( array_filter( $submenu[$parent_slug], function( $submenu_item ) use( $menu_slug ){ return in_array( $menu_slug, $submenu_item ); }) ) )
+	if( isset($submenu[$parent_slug]) && empty( array_filter( $submenu[$parent_slug], function( $submenu_item ) use( $menu_slug ){ return in_array( $menu_slug, $submenu_item ); }) ) )
 		add_submenu_page(
 			$parent_slug,
 			'Order '.$args->label,
